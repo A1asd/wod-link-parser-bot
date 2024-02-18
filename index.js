@@ -1,4 +1,6 @@
-const { Client, Events, GatewayIntentBits, Partials } = require('discord.js');
+const { Client, Events, GatewayIntentBits, Partials, Collection } = require('discord.js');
+const path = require('path');
+const fs = require('fs');
 const dotenv = require('dotenv');
 const { gameServer } = require('./config.json');
 
@@ -15,6 +17,21 @@ const client = new Client({
 		Partials.Channel,
 	]
 });
+client.commands = new Collection();
+
+const foldersPath = path.join(__dirname, 'commands');
+const commandFiles = fs.readdirSync(foldersPath).filter(file => file.endsWith('.js'));
+
+for (const file of commandFiles) {
+	const filePath = path.join(foldersPath, file);
+	const command = require(filePath);
+	// Set a new item in the Collection with the key as the command name and the value as the exported module
+	if ('data' in command && 'execute' in command) {
+		client.commands.set(command.data.name, command);
+	} else {
+		console.log(`[WARNING] The command at ${filePath} is missing a required "data" or "execute" property.`);
+	}
+}
 
 client.once(Events.ClientReady, readyClient => {
 	console.log(`Ready! Logged in as ${readyClient.user.tag}`);
@@ -38,6 +55,28 @@ client.on(Events.MessageCreate, async (message) => {
 	message.channel.send(responseStrings.join(', '));
 });
 
+client.on(Events.InteractionCreate, async interaction => {
+	if (!interaction.isChatInputCommand()) return;
+
+	const command = interaction.client.commands.get(interaction.commandName);
+
+	if (!command) {
+		console.error(`No command matching ${interaction.commandName} was found.`);
+		return;
+	}
+
+	try {
+		await command.execute(interaction);
+	} catch (error) {
+		console.error(error);
+		if (interaction.replied || interaction.deferred) {
+			await interaction.followUp({ content: 'There was an error while executing this command!', ephemeral: true });
+		} else {
+			await interaction.reply({ content: 'There was an error while executing this command!', ephemeral: true });
+		}
+	}
+});
+
 function buildURL(linkType, searchString) {
 	const server = gameServer.length > 0 ? gameServer + '.' : '';
 	let typePart;
@@ -56,7 +95,7 @@ function buildURL(linkType, searchString) {
 		case 'class': typePart = 'hero/class'; break;
 		default: return false;
 	}
-	return 'https://' + server + 'world-of-dungeons.de/wod/spiel/' + typePart + '.php?name=' + searchString.replace(' ', '+');
+	return 'https://' + server + 'world-of-dungeons.de/wod/spiel/' + typePart + '.php?name=' + searchString.replaceAll(' ', '+');
 }
 
 function parseWodLink(internalUrl) {
