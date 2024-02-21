@@ -45,9 +45,9 @@ client.on(Events.MessageCreate, async (message) => {
 	matches.forEach(match => {
 		let linkType = match[0];
 		let searchString = match[1];
-		let url = buildURL(linkType, searchString);
+		let [url, label] = buildURL(linkType, searchString);
 		if (!url) { return }
-		responseStrings.push('[' + searchString + '](' + url + ')');
+		responseStrings.push('[' + label + '](' + url + ')');
 	})
 
 	if (responseStrings.length < 1) { return }
@@ -79,24 +79,33 @@ client.on(Events.InteractionCreate, async interaction => {
 
 function buildURL(linkType, searchString) {
 	const server = gameServer.length > 0 ? gameServer + '.' : '';
-	let typePart;
+	let searchUrl;
+	let label = searchString.replaceAll(' ', '+');
 	switch (linkType) {
-		case 'item': typePart = 'hero/item'; break;
-		case 'hero': typePart = 'hero/profile'; break;
-		case 'player': typePart = 'profiles/player'; break;
-		case 'group': typePart = 'dungeon/group'; break;
-		case 'clan': typePart = 'clan/clan'; break;
-		case 'skill': typePart = 'hero/skill'; break;
-		case 'npc': typePart = 'help/npc'; break;
-		case 'forum': typePart = 'forum/viewforum'; break;
-		case 'post': typePart = 'forum/viewtopic'; break;
-		case 'auction': typePart = 'trade/auction_details'; break;
-		case 'set': typePart = 'hero/set'; break;
-		case 'class': typePart = 'hero/class'; break;
+		case 'item': searchUrl = 'hero/item.php?name=' + searchString.replaceAll(' ', '+'); break;
+		case 'hero': searchUrl = 'hero/profile.php?name=' + searchString.replaceAll(' ', '+'); break;
+		case 'player': searchUrl = 'profiles/player.php?name=' + searchString.replaceAll(' ', '+'); break;
+		case 'group': searchUrl = 'dungeon/group.php?name=' + searchString.replaceAll(' ', '+'); break;
+		case 'clan': searchUrl = 'clan/clan.php?name=' + searchString.replaceAll(' ', '+'); break;
+		case 'skill': searchUrl = 'hero/skill.php?name=' + searchString.replaceAll(' ', '+'); break;
+		case 'npc': searchUrl = 'help/npc.php?name=' + searchString.replaceAll(' ', '+'); break;
+		case 'forum': searchUrl = 'forum/viewtopic.php?pid=' + searchString.replaceAll(' ', '+') + '#' + searchString.replaceAll(' ', '+'); label = 'Zum Forum (' + searchString.replaceAll(' ', '+') + ')'; break;
+		case 'post': searchUrl = 'forum/viewtopic.php?pid=' + searchString.replaceAll(' ', '+') + '#' + searchString.replaceAll(' ', '+'); label = 'Zum Forum (' + searchString.replaceAll(' ', '+') + ')'; break;
+		//case 'pcom': searchUrl = 'forum/viewforum.php?pid=' + searchString.replaceAll(' ', '+') + '#' + searchString.replaceAll(' ', '+'); label = 'Zum Forum (' + searchString.replaceAll(' ', '+') + ')'; break;
+		case 'auction': searchUrl = 'trade/auction_details.php?name=' + searchString.replaceAll(' ', '+'); break;
+		case 'set': searchUrl = 'hero/set.php?name=' + searchString.replaceAll(' ', '+'); break;
+		case 'class': searchUrl = 'hero/class.php?name=' + searchString.replaceAll(' ', '+'); break;
 		default: return false;
 	}
-	return 'https://' + server + 'world-of-dungeons.de/wod/spiel/' + typePart + '.php?name=' + searchString.replaceAll(' ', '+');
+	return ['https://' + server + 'world-of-dungeons.de/wod/spiel/' + searchUrl, label];
 }
+/*[pcom:wc_gruppe_17825461]
+https://cartegon.world-of-dungeons.de/wod/spiel/forum/viewtopic.php?pid=17825461&board=gruppe&world=wc&IS_POPUP=1&session_hero_id=285410&is_popup=1#17825461
+https://cartegon.world-of-dungeons.de/wod/spiel/forum/viewtopic.php?pid=16268041&board=kein&session_hero_id=285410#16268041
+https://cartegon.world-of-dungeons.de/wod/spiel/forum/viewtopic.php?pid=17825461&board=gruppe&world=wc&IS_POPUP=1&session_hero_id=285410&is_popup=1#17825461
+
+https://cartegon.world-of-dungeons.de/wod/spiel/forum/viewtopic.php?pid=17825466&jump=1&board=gruppe&world=wc&IS_POPUP=1&is_popup=1#17825466
+*/
 
 function parseWodLink(internalUrl) {
 	const regex = /\[(item|hero|player|group|clan|skill|npc|forum|post|auction|set|class):(.*?)\]/g;
